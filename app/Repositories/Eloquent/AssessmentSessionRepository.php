@@ -11,14 +11,19 @@ class AssessmentSessionRepository implements AssessmentSessionRepositoryInterfac
 {
     public function find(string $id): ?AssessmentSession
     {
-        return AssessmentSession::with(['assessment', 'answers'])->find($id);
+        // Eager load assessment beserta questions dan options-nya (dengan media), serta answers yang sudah disimpan
+        return AssessmentSession::with([
+            'assessment.questions.media',
+            'assessment.questions.options.media',
+            'answers'
+        ])->find($id);
     }
-
     public function create(array $data): AssessmentSession
     {
-        return AssessmentSession::create($data);
+        $session = AssessmentSession::create($data);
+        // Panggil find() untuk memuat relasi yang lengkap
+        return $this->find($session->id);
     }
-
     public function update(string $id, array $data): bool
     {
         $session = AssessmentSession::find($id);
@@ -27,13 +32,14 @@ class AssessmentSessionRepository implements AssessmentSessionRepositoryInterfac
         }
         return $session->update($data);
     }
-
     public function getUserActiveSession(string $userId, string $assessmentId): ?AssessmentSession
     {
-        return AssessmentSession::where('user_id', $userId)
+        $session = AssessmentSession::where('user_id', $userId)
             ->where('assessment_id', $assessmentId)
             ->where('status', 'in_progress')
             ->first();
+        // Jika sesi aktif ditemukan, panggil find() agar memuat relasi lengkap
+        return $session ? $this->find($session->id) : null;
     }
 
     public function getAttemptsCount(string $userId, string $assessmentId): int

@@ -21,11 +21,15 @@ Route::prefix('v1')->group(function () {
         });
     });
 
+    // Public Monitoring Route
+    Route::get('public/assessments/{assessment}/monitor', [AssessmentController::class, 'publicMonitor']);
+
     // Protected Routes
     Route::group(['middleware' => 'auth:api'], function () {
         Route::apiResource('categories', CategoryController::class);
         Route::apiResource('questions', QuestionController::class);
         Route::apiResource('assessments', AssessmentController::class);
+        Route::get('assessments/{assessment}/sessions', [AssessmentController::class, 'sessions']);
 
         // Assessment Session execution routes
         Route::post('assessments/{assessment}/start', [AssessmentSessionController::class, 'start']);

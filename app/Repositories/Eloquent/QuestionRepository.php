@@ -10,7 +10,7 @@ class QuestionRepository implements QuestionRepositoryInterface
 {
     public function paginate(int $perPage = 15, array $filters = []): LengthAwarePaginator
     {
-        $query = Question::with(['category', 'options', 'media']);
+        $query = Question::with(['category', 'options.media', 'media']);
 
         if (!empty($filters['category_id'])) {
             $query->where('category_id', $filters['category_id']);
@@ -33,7 +33,7 @@ class QuestionRepository implements QuestionRepositoryInterface
 
     public function find(string $id): ?Question
     {
-        return Question::with(['category', 'options', 'media'])->find($id);
+        return Question::with(['category', 'options.media', 'media'])->find($id);
     }
 
     public function create(array $data): Question

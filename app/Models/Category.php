@@ -6,10 +6,20 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 
-#[Fillable(['name', 'parent_id'])]
+#[Fillable(['name', 'parent_id', 'passing_grade'])]
 class Category extends Model
 {
     use HasUlids;
+
+    /**
+     * Get the attributes that should be cast.
+     */
+    protected function casts(): array
+    {
+        return [
+            'passing_grade' => 'decimal:2',
+        ];
+    }
 
     /**
      * Relationship with Parent Category.

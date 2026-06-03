@@ -41,9 +41,59 @@ class CertificateService
             }
 
             // Check if passed passing grade
-            $passingGrade = $session->assessment->passing_grade ?? 0.00;
-            if ($session->total_score < $passingGrade) {
-                throw ValidationException::withMessages(['session' => 'Nilai ujian Anda tidak mencapai KKM / standar kelulusan (' . $passingGrade . ').']);
+            $gradingType = $session->assessment->passing_grade_type ?? 'overall';
+
+            if ($gradingType === 'per_category') {
+                // Load answers with their questions and categories
+                $answers = $session->answers()->with('question.category')->get();
+
+                // Build a map: category_id => { answered: N, total: N, passing_grade: X }
+                $categoryMap = [];
+                foreach ($session->assessment->questions()->with('category')->get() as $question) {
+                    $catId = $question->category_id;
+                    if (!isset($categoryMap[$catId])) {
+                        $categoryMap[$catId] = [
+                            'name' => $question->category->name ?? 'Tanpa Kategori',
+                            'passing_grade' => $question->category->passing_grade ?? null,
+                            'answered_correct' => 0,
+                            'total' => 0,
+                        ];
+                    }
+                    $categoryMap[$catId]['total']++;
+                }
+
+                // Count correct answers per category
+                foreach ($answers as $answer) {
+                    $catId = $answer->question->category_id ?? null;
+                    if ($catId && isset($categoryMap[$catId])) {
+                        // Check if selected option is correct
+                        if ($answer->selectedOption && $answer->selectedOption->is_correct) {
+                            $categoryMap[$catId]['answered_correct']++;
+                        }
+                    }
+                }
+
+                // Check each category with a defined KKM
+                foreach ($categoryMap as $catId => $cat) {
+                    $kkm = $cat['passing_grade'];
+                    if ($kkm === null) continue; // Skip categories without KKM
+
+                    $total = $cat['total'];
+                    if ($total === 0) continue;
+
+                    $score = ($cat['answered_correct'] / $total) * 100;
+                    if ($score < $kkm) {
+                        throw ValidationException::withMessages([
+                            'session' => 'Nilai kategori "' . $cat['name'] . '" (' . round($score, 1) . ') tidak mencapai KKM kategori (' . $kkm . ').'
+                        ]);
+                    }
+                }
+            } else {
+                // Overall passing grade check
+                $passingGrade = $session->assessment->passing_grade ?? 0.00;
+                if ($session->total_score < $passingGrade) {
+                    throw ValidationException::withMessages(['session' => 'Nilai ujian Anda tidak mencapai KKM / standar kelulusan (' . $passingGrade . ').']);
+                }
             }
 
             // Check if certificate already exists

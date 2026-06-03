@@ -21,6 +21,7 @@ class UpdateQuestionRequest extends FormRequest
             
             // Opsi PG validation
             'options' => ['sometimes', 'array'],
+            'options.*.id' => ['sometimes', 'string', 'exists:question_options,id'],
             'options.*.option_text' => ['required_with:options', 'string'],
             'options.*.is_correct' => ['sometimes', 'boolean'],
             'options.*.weight' => ['sometimes', 'numeric', 'min:0'],
@@ -28,6 +29,15 @@ class UpdateQuestionRequest extends FormRequest
             // Media attachment validation
             'attachments' => ['sometimes', 'array'],
             'attachments.*' => ['file', 'max:5120'], // Max 5MB per file
+
+            // Option attachments validation
+            'option_attachments' => ['sometimes', 'array'],
+            'option_attachments.*' => ['file', 'max:5120'],
+
+            // Specific media deletion validation
+            'deleted_media_ids' => ['sometimes', 'array'],
+            'deleted_media_ids.*' => ['string', 'exists:media,id'],
+            'options.*.clear_image' => ['sometimes', 'boolean'],
         ];
     }
 

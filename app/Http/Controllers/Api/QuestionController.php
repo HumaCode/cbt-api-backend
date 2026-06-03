@@ -45,8 +45,9 @@ class QuestionController extends Controller
         $data = $request->only(['category_id', 'type', 'difficulty', 'content_text']);
         $options = $request->input('options');
         $attachments = $request->file('attachments');
+        $optionAttachments = $request->file('option_attachments');
 
-        $question = $this->questionService->createQuestion($data, $options, $attachments);
+        $question = $this->questionService->createQuestion($data, $options, $attachments, $optionAttachments);
         return ResponseHelper::success($question, 'Soal berhasil dibuat.', 201);
     }
 
@@ -76,11 +77,12 @@ class QuestionController extends Controller
      */
     public function update(UpdateQuestionRequest $request, string $id): JsonResponse
     {
-        $data = $request->only(['category_id', 'type', 'difficulty', 'content_text']);
+        $data = $request->only(['category_id', 'type', 'difficulty', 'content_text', 'clear_media', 'deleted_media_ids']);
         $options = $request->input('options');
         $attachments = $request->file('attachments');
+        $optionAttachments = $request->file('option_attachments');
 
-        $updated = $this->questionService->updateQuestion($id, $data, $options, $attachments);
+        $updated = $this->questionService->updateQuestion($id, $data, $options, $attachments, $optionAttachments);
 
         if (!$updated) {
             return ResponseHelper::error('Soal tidak ditemukan atau gagal diperbarui.', null, 404);

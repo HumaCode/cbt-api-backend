@@ -26,9 +26,9 @@ class QuestionService
         return $this->questionRepository->find($id);
     }
 
-    public function createQuestion(array $data, ?array $options = null, ?array $attachments = null): Question
+    public function createQuestion(array $data, ?array $options = null, ?array $attachments = null, ?array $optionAttachments = null): Question
     {
-        return DB::transaction(function () use ($data, $options, $attachments) {
+        return DB::transaction(function () use ($data, $options, $attachments, $optionAttachments) {
             // Set current authenticated user id as creator
             $data['created_by'] = auth('api')->id();
 
@@ -36,12 +36,17 @@ class QuestionService
 
             // Create Opsi Jawaban (if provided and PG type)
             if ($data['type'] === 'pg' && !empty($options)) {
-                foreach ($options as $option) {
-                    $question->options()->create([
-                        'option_text' => $option['option_text'],
+                foreach ($options as $index => $option) {
+                    $newOption = $question->options()->create([
+                        'option_text' => $option['option_text'] ?? '',
                         'is_correct' => $option['is_correct'] ?? false,
                         'weight' => $option['weight'] ?? 0.00,
                     ]);
+
+                    // Upload Option Image (if provided)
+                    if (!empty($optionAttachments) && isset($optionAttachments[$index])) {
+                        $newOption->addMedia($optionAttachments[$index])->toMediaCollection('option_image');
+                    }
                 }
             }
 
@@ -52,13 +57,13 @@ class QuestionService
                 }
             }
 
-            return $question->load(['category', 'options', 'media']);
+            return $question->load(['category', 'options.media', 'media']);
         });
     }
 
-    public function updateQuestion(string $id, array $data, ?array $options = null, ?array $attachments = null): bool
+    public function updateQuestion(string $id, array $data, ?array $options = null, ?array $attachments = null, ?array $optionAttachments = null): bool
     {
-        return DB::transaction(function () use ($id, $data, $options, $attachments) {
+        return DB::transaction(function () use ($id, $data, $options, $attachments, $optionAttachments) {
             $question = $this->questionRepository->find($id);
             if (!$question) {
                 return false;
@@ -69,20 +74,60 @@ class QuestionService
 
             // Sync Opsi Jawaban (if provided and PG type)
             if ($question->type === 'pg' && $options !== null) {
-                // Delete existing options
-                $question->options()->delete();
+                // Delete options not in the incoming list
+                $incomingIds = collect($options)->pluck('id')->filter()->toArray();
+                $question->options()->whereNotIn('id', $incomingIds)->get()->each(function ($opt) {
+                    $opt->clearMediaCollection('option_image');
+                    $opt->delete();
+                });
 
-                // Insert new options
-                foreach ($options as $option) {
-                    $question->options()->create([
-                        'option_text' => $option['option_text'],
+                // Insert/Update options
+                foreach ($options as $index => $option) {
+                    $optData = [
+                        'option_text' => $option['option_text'] ?? '',
                         'is_correct' => $option['is_correct'] ?? false,
                         'weight' => $option['weight'] ?? 0.00,
-                    ]);
+                    ];
+
+                    if (!empty($option['id'])) {
+                        $opt = $question->options()->find($option['id']);
+                        if ($opt) {
+                            $opt->update($optData);
+                        } else {
+                            $opt = $question->options()->create($optData);
+                        }
+                    } else {
+                        $opt = $question->options()->create($optData);
+                    }
+
+                    // Clear Option Image (if requested)
+                    if (!empty($option['clear_image'])) {
+                        $opt->clearMediaCollection('option_image');
+                    }
+
+                    // Upload Option Image (if provided)
+                    if (!empty($optionAttachments) && isset($optionAttachments[$index])) {
+                        $opt->clearMediaCollection('option_image');
+                        $opt->addMedia($optionAttachments[$index])->toMediaCollection('option_image');
+                    }
                 }
             }
 
-            // Handle new media attachments
+            // Handle specific media deletions
+            if (!empty($data['deleted_media_ids'])) {
+                foreach ($data['deleted_media_ids'] as $mediaId) {
+                    $mediaItem = $question->media()->find($mediaId);
+                    if ($mediaItem) {
+                        $mediaItem->delete();
+                    }
+                }
+            }
+
+            // Handle clear all media request
+            if (!empty($data['clear_media'])) {
+                $question->clearMediaCollection('attachments');
+            }
+
             if (!empty($attachments)) {
                 foreach ($attachments as $file) {
                     $question->addMedia($file)->toMediaCollection('attachments');
@@ -104,8 +149,11 @@ class QuestionService
             // Clean up Spatie media
             $question->clearMediaCollection('attachments');
 
-            // Delete options first (handled by foreign keys cascade, but clean anyway)
-            $question->options()->delete();
+            // Clean up options media and delete options
+            $question->options->each(function ($opt) {
+                $opt->clearMediaCollection('option_image');
+                $opt->delete();
+            });
 
             return $this->questionRepository->delete($id);
         });

@@ -44,7 +44,8 @@ class AssessmentController extends Controller
     {
         $data = $request->only([
             'title', 'start_date', 'end_date', 'duration_minutes', 
-            'max_attempts', 'randomize_questions', 'randomize_options', 'passing_grade'
+            'max_attempts', 'randomize_questions', 'randomize_options',
+            'passing_grade', 'passing_grade_type'
         ]);
         $groupIds = $request->input('group_ids');
         $questions = $request->input('questions');
@@ -81,7 +82,8 @@ class AssessmentController extends Controller
     {
         $data = $request->only([
             'title', 'start_date', 'end_date', 'duration_minutes', 
-            'max_attempts', 'randomize_questions', 'randomize_options', 'passing_grade'
+            'max_attempts', 'randomize_questions', 'randomize_options',
+            'passing_grade', 'passing_grade_type'
         ]);
         $groupIds = $request->input('group_ids');
         $questions = $request->input('questions');
@@ -111,5 +113,65 @@ class AssessmentController extends Controller
         }
 
         return ResponseHelper::success(null, 'Ujian berhasil dihapus.');
+    }
+
+    /**
+     * Get sessions for a specific assessment.
+     *
+     * @param string $id
+     * @return JsonResponse
+     */
+    public function sessions(string $id): JsonResponse
+    {
+        $assessment = $this->assessmentService->getAssessmentById($id);
+        if (!$assessment) {
+            return ResponseHelper::error('Ujian tidak ditemukan.', null, 404);
+        }
+
+        $sessions = \App\Models\AssessmentSession::with(['user'])
+            ->withCount(['answers', 'proctoringLogs'])
+            ->where('assessment_id', $id)
+            ->get();
+
+        return ResponseHelper::success($sessions, 'Daftar sesi ujian peserta berhasil diambil.');
+    }
+
+    /**
+     * Get public monitoring data for a specific assessment.
+     *
+     * @param string $id
+     * @return JsonResponse
+     */
+    public function publicMonitor(string $id): JsonResponse
+    {
+        $assessment = \App\Models\Assessment::with(['questions:id,category_id', 'questions.category:id,name'])->find($id);
+        if (!$assessment) {
+            return ResponseHelper::error('Ujian tidak ditemukan.', null, 404);
+        }
+
+        // Only return basic public details of the assessment
+        $publicAssessment = [
+            'id' => $assessment->id,
+            'title' => $assessment->title,
+            'passing_grade' => $assessment->passing_grade,
+            'duration' => $assessment->duration,
+            'start_date' => $assessment->start_date,
+            'end_date' => $assessment->end_date,
+            'questions_count' => $assessment->questions->count(),
+            'questions' => $assessment->questions,
+        ];
+
+        $sessions = \App\Models\AssessmentSession::with([
+            'user:id,name,email',
+            'answers:id,session_id,question_id'
+        ])
+            ->withCount(['answers', 'proctoringLogs'])
+            ->where('assessment_id', $id)
+            ->get();
+
+        return ResponseHelper::success([
+            'assessment' => $publicAssessment,
+            'sessions' => $sessions
+        ], 'Data monitoring publik berhasil diambil.');
     }
 }

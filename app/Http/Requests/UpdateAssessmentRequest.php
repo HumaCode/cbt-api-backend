@@ -22,7 +22,8 @@ class UpdateAssessmentRequest extends FormRequest
             'randomize_questions' => ['sometimes', 'boolean'],
             'randomize_options' => ['sometimes', 'boolean'],
             'passing_grade' => ['sometimes', 'numeric', 'min:0', 'max:100'],
-            
+            'passing_grade_type' => ['sometimes', 'in:overall,per_category'],
+
             // Pivot syncing validation
             'group_ids' => ['sometimes', 'array'],
             'group_ids.*' => ['string', 'exists:groups,id'],

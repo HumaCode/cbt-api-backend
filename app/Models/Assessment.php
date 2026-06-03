@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
     'randomize_questions',
     'randomize_options',
     'passing_grade',
+    'passing_grade_type',
 ])]
 class Assessment extends Model
 {
@@ -33,6 +34,7 @@ class Assessment extends Model
             'randomize_questions' => 'boolean',
             'randomize_options' => 'boolean',
             'passing_grade' => 'decimal:2',
+            'passing_grade_type' => 'string',
         ];
     }
 
