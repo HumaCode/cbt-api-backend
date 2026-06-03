@@ -28,11 +28,17 @@ class AssessmentController extends Controller
     public function index(Request $request): JsonResponse
     {
         $filters = $request->only(['search', 'active']);
-        $perPage = $request->input('per_page', 15);
+        
+        if ($request->input('per_page') === 'all' || !$request->has('per_page')) {
+            $assessments = $this->assessmentService->getAllAssessments($filters);
+            return ResponseHelper::success($assessments, 'Daftar ujian berhasil diambil.');
+        }
 
+        $perPage = $request->input('per_page', 15);
         $assessments = $this->assessmentService->getAssessmentsPaginated((int)$perPage, $filters);
         return ResponseHelper::success($assessments, 'Daftar ujian berhasil diambil.');
     }
+
 
     /**
      * Store a newly created assessment in storage.

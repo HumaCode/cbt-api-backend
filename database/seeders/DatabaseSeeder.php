@@ -151,5 +151,9 @@ class DatabaseSeeder extends Seeder
         $assessmentEnglish->questions()->attach([
             $q4->id => ['order_no' => 1]
         ]);
+
+        // 7. Seed TIU, TWK, and TKP Categories, Questions, and CPNS Assessment
+        $this->call(TiuTwkTkpSeeder::class);
     }
 }
+

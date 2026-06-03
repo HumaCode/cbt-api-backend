@@ -28,11 +28,17 @@ class QuestionController extends Controller
     public function index(Request $request): JsonResponse
     {
         $filters = $request->only(['category_id', 'type', 'difficulty', 'search']);
-        $perPage = $request->input('per_page', 15);
+        
+        if ($request->input('per_page') === 'all' || !$request->has('per_page')) {
+            $questions = $this->questionService->getAllQuestions($filters);
+            return ResponseHelper::success($questions, 'Daftar soal berhasil diambil.');
+        }
 
+        $perPage = $request->input('per_page', 15);
         $questions = $this->questionService->getQuestionsPaginated((int)$perPage, $filters);
         return ResponseHelper::success($questions, 'Daftar soal berhasil diambil.');
     }
+
 
     /**
      * Store a newly created question in storage.
@@ -107,5 +113,38 @@ class QuestionController extends Controller
         }
 
         return ResponseHelper::success(null, 'Soal berhasil dihapus.');
+    }
+
+    /**
+     * Import questions from CSV or Excel file.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function import(Request $request): JsonResponse
+    {
+        $request->validate([
+            'category_id' => 'required|exists:categories,id',
+            'file' => 'required|file|mimes:xlsx,xls,csv,txt',
+        ]);
+
+        try {
+            $categoryId = $request->input('category_id');
+            $file = $request->file('file');
+            
+            $import = new \App\Imports\QuestionsImport;
+            $data = \Maatwebsite\Excel\Facades\Excel::toArray($import, $file);
+            
+            if (empty($data) || empty($data[0])) {
+                return ResponseHelper::error('File kosong atau format tidak valid.', null, 422);
+            }
+
+            $rows = $data[0];
+            $importedCount = $this->questionService->importQuestions($categoryId, $rows);
+
+            return ResponseHelper::success(['imported_count' => $importedCount], "Berhasil mengimpor {$importedCount} soal.");
+        } catch (\Exception $e) {
+            return ResponseHelper::error('Gagal mengimpor file: ' . $e->getMessage(), null, 500);
+        }
     }
 }

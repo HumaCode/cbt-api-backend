@@ -27,6 +27,26 @@ class AssessmentRepository implements AssessmentRepositoryInterface
         return $query->latest()->paginate($perPage);
     }
 
+    public function all(array $filters = []): \Illuminate\Database\Eloquent\Collection
+    {
+        $query = Assessment::with(['groups', 'questions']);
+
+        if (!empty($filters['search'])) {
+            $query->where('title', 'like', '%' . $filters['search'] . '%');
+        }
+
+        if (isset($filters['active'])) {
+            $now = now();
+            if ($filters['active']) {
+                $query->where('start_date', '<=', $now)
+                      ->where('end_date', '>=', $now);
+            }
+        }
+
+        return $query->latest()->get();
+    }
+
+
     public function find(string $id): ?Assessment
     {
         return Assessment::with(['groups', 'questions'])->find($id);

@@ -21,6 +21,12 @@ class AssessmentService
         return $this->assessmentRepository->paginate($perPage, $filters);
     }
 
+    public function getAllAssessments(array $filters = []): \Illuminate\Database\Eloquent\Collection
+    {
+        return $this->assessmentRepository->all($filters);
+    }
+
+
     public function getAssessmentById(string $id): ?Assessment
     {
         return $this->assessmentRepository->find($id);

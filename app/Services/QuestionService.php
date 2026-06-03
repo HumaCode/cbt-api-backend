@@ -21,6 +21,12 @@ class QuestionService
         return $this->questionRepository->paginate($perPage, $filters);
     }
 
+    public function getAllQuestions(array $filters = []): \Illuminate\Database\Eloquent\Collection
+    {
+        return $this->questionRepository->all($filters);
+    }
+
+
     public function getQuestionById(string $id): ?Question
     {
         return $this->questionRepository->find($id);
@@ -156,6 +162,104 @@ class QuestionService
             });
 
             return $this->questionRepository->delete($id);
+        });
+    }
+
+    public function importQuestions(string $categoryId, array $rows): int
+    {
+        return DB::transaction(function () use ($categoryId, $rows) {
+            $userId = auth('api')->id();
+            $importedCount = 0;
+
+            foreach ($rows as $row) {
+                // Find content text
+                $contentText = $row['soal'] ?? $row['content_text'] ?? $row['pertanyaan'] ?? $row['question'] ?? null;
+                if (empty($contentText)) {
+                    continue;
+                }
+
+                // Parse type
+                $rawType = strtolower(trim($row['type'] ?? $row['tipe'] ?? 'pg'));
+                $type = 'pg';
+                if (in_array($rawType, ['essay', 'uraian'])) {
+                    $type = 'essay';
+                } elseif (in_array($rawType, ['likert'])) {
+                    $type = 'likert';
+                }
+
+                // Parse difficulty
+                $rawDiff = strtolower(trim($row['difficulty'] ?? $row['kesulitan'] ?? 'medium'));
+                $difficulty = 'medium';
+                if (in_array($rawDiff, ['easy', 'mudah'])) {
+                    $difficulty = 'easy';
+                } elseif (in_array($rawDiff, ['hard', 'sulit', 'tinggi'])) {
+                    $difficulty = 'hard';
+                }
+
+                // Create Question
+                $question = $this->questionRepository->create([
+                    'category_id' => $categoryId,
+                    'type' => $type,
+                    'difficulty' => $difficulty,
+                    'content_text' => $contentText,
+                    'created_by' => $userId,
+                ]);
+
+                // If PG, parse options
+                if ($type === 'pg') {
+                    // Extract option texts
+                    $optA = $row['option_a'] ?? $row['pilihan_a'] ?? $row['a'] ?? null;
+                    $optB = $row['option_b'] ?? $row['pilihan_b'] ?? $row['b'] ?? null;
+                    $optC = $row['option_c'] ?? $row['pilihan_c'] ?? $row['c'] ?? null;
+                    $optD = $row['option_d'] ?? $row['pilihan_d'] ?? $row['d'] ?? null;
+                    $optE = $row['option_e'] ?? $row['pilihan_e'] ?? $row['e'] ?? null;
+
+                    $optionsData = [];
+                    if ($optA !== null) $optionsData['A'] = $optA;
+                    if ($optB !== null) $optionsData['B'] = $optB;
+                    if ($optC !== null) $optionsData['C'] = $optC;
+                    if ($optD !== null) $optionsData['D'] = $optD;
+                    if ($optE !== null) $optionsData['E'] = $optE;
+
+                    // Extract correct key
+                    $correctKey = strtoupper(trim($row['correct_option'] ?? $row['jawaban_benar'] ?? $row['kunci'] ?? $row['kunci_jawaban'] ?? ''));
+
+                    // Extract weights
+                    $weightA = isset($row['weight_a']) ? (float)$row['weight_a'] : (isset($row['bobot_a']) ? (float)$row['bobot_a'] : null);
+                    $weightB = isset($row['weight_b']) ? (float)$row['weight_b'] : (isset($row['bobot_b']) ? (float)$row['bobot_b'] : null);
+                    $weightC = isset($row['weight_c']) ? (float)$row['weight_c'] : (isset($row['bobot_c']) ? (float)$row['bobot_c'] : null);
+                    $weightD = isset($row['weight_d']) ? (float)$row['weight_d'] : (isset($row['bobot_d']) ? (float)$row['bobot_d'] : null);
+                    $weightE = isset($row['weight_e']) ? (float)$row['weight_e'] : (isset($row['bobot_e']) ? (float)$row['bobot_e'] : null);
+
+                    $weightsData = [
+                        'A' => $weightA,
+                        'B' => $weightB,
+                        'C' => $weightC,
+                        'D' => $weightD,
+                        'E' => $weightE,
+                    ];
+
+                    foreach ($optionsData as $key => $optText) {
+                        $isCorrect = ($correctKey === $key);
+                        
+                        // Calculate weight
+                        $weight = $weightsData[$key];
+                        if ($weight === null) {
+                            $weight = $isCorrect ? 5.00 : 0.00;
+                        }
+
+                        $question->options()->create([
+                            'option_text' => $optText,
+                            'is_correct' => $isCorrect,
+                            'weight' => $weight,
+                        ]);
+                    }
+                }
+
+                $importedCount++;
+            }
+
+            return $importedCount;
         });
     }
 }

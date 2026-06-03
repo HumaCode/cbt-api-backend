@@ -31,6 +31,30 @@ class QuestionRepository implements QuestionRepositoryInterface
         return $query->latest()->paginate($perPage);
     }
 
+    public function all(array $filters = []): \Illuminate\Database\Eloquent\Collection
+    {
+        $query = Question::with(['category', 'options.media', 'media']);
+
+        if (!empty($filters['category_id'])) {
+            $query->where('category_id', $filters['category_id']);
+        }
+
+        if (!empty($filters['type'])) {
+            $query->where('type', $filters['type']);
+        }
+
+        if (!empty($filters['difficulty'])) {
+            $query->where('difficulty', $filters['difficulty']);
+        }
+
+        if (!empty($filters['search'])) {
+            $query->where('content_text', 'like', '%' . $filters['search'] . '%');
+        }
+
+        return $query->latest()->get();
+    }
+
+
     public function find(string $id): ?Question
     {
         return Question::with(['category', 'options.media', 'media'])->find($id);

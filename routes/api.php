@@ -27,6 +27,7 @@ Route::prefix('v1')->group(function () {
     // Protected Routes
     Route::group(['middleware' => 'auth:api'], function () {
         Route::apiResource('categories', CategoryController::class);
+        Route::post('questions/import', [QuestionController::class, 'import']);
         Route::apiResource('questions', QuestionController::class);
         Route::apiResource('assessments', AssessmentController::class);
         Route::get('assessments/{assessment}/sessions', [AssessmentController::class, 'sessions']);
