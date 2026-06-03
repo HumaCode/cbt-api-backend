@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\QuestionController;
 
 Route::prefix('v1')->group(function () {
     Route::group(['prefix' => 'auth'], function () {
@@ -19,5 +20,6 @@ Route::prefix('v1')->group(function () {
     // Protected Routes
     Route::group(['middleware' => 'auth:api'], function () {
         Route::apiResource('categories', CategoryController::class);
+        Route::apiResource('questions', QuestionController::class);
     });
 });
