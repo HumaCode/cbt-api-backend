@@ -1,58 +1,127 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Computer Based Test (CBT) API Backend
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+CBT API Backend adalah sistem manajemen ujian berbasis komputer yang dirancang menggunakan **Laravel 13** dan **PHP 8.2+**. Backend ini mengimplementasikan **Clean Architecture** dengan pola **Service-Repository** untuk memisahkan logika bisnis dari lapisan presentasi/HTTP, serta menggunakan standar modern Laravel 13 untuk penulisan Model.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## 🚀 Fitur Utama
+1.  **Engine Simulasi CPNS**:
+    *   Mendukung format ujian CPNS dengan kategori khusus: **TIU** (Tes Inteligensia Umum), **TWK** (Tes Wawasan Kebangsaan), dan **TKP** (Tes Karakteristik Pribadi).
+    *   Penilaian otomatis terpisah berdasarkan KKM (Kriteria Ketuntasan Minimal) per kategori dan akumulasi nilai ambang batas.
+2.  **Manajemen Ujian & Sesi (Assessment & Session)**:
+    *   Pengaturan acak soal (*randomize questions*) dan acak opsi jawaban (*randomize options*).
+    *   Sistem pembatasan durasi ujian (*timer*) dengan fitur *force-submit* otomatis jika waktu habis.
+    *   Kemudahan monitoring aktivitas peserta secara *real-time*.
+3.  **Analisis Butir Soal & Dashboard**:
+    *   **Item Analysis**: Mengkalkulasi tingkat kesulitan dan tingkat kesuksesan pengerjaan soal (*correctness rate*) untuk mengevaluasi kualitas bank soal.
+    *   **Statistik Dashboard**: Rekapitulasi performa kelompok (rata-rata nilai & kelulusan KKM per Grup), status pelanggaran, dan tren pengerjaan ujian.
+4.  **Sistem Pengawasan (Proctoring System)**:
+    *   Pencatatan pelanggaran pengawasan secara otomatis (pindah tab, keluar layar penuh, dll.) untuk menjaga integritas ujian.
+5.  **Impor Massal (Excel & CSV)**:
+    *   Fitur unggah massal untuk bank soal beserta opsi dan bobot nilainya.
+    *   Fitur unggah massal untuk data peserta beserta pembagian grupnya.
+6.  **Sertifikat Digital**:
+    *   Rilis sertifikat digital otomatis atau manual berdasarkan pencapaian skor KKM dengan template klasik/modern.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+---
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## 🏗️ Pola Desain (Design Pattern)
+Projek ini menggunakan pola **Service-Repository** untuk mencapai keterbacaan kode yang maksimal (*Clean Code*):
 
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+```mermaid
+graph TD
+    Client[HTTP Client] --> Controller[Api Controller]
+    Controller -->|Delegasi Bisnis & Validasi| Service[Service Layer]
+    Service -->|Transaksi & Abstraksi Data| Repository[Repository Layer]
+    Repository -->|Query Model| Eloquent[Eloquent Model & DB]
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+*   **Controller**: Hanya berfungsi sebagai pintu masuk (entrypoint) request, validasi dasar, dan formatting output JSON via `ResponseHelper`.
+*   **Service**: Menyimpan seluruh *business logic*, penanganan transaksi DB, streaming CSV, perhitungan skor, dan integrasi library pihak ketiga.
+*   **Repository**: Berfungsi sebagai satu-satunya jembatan interaksi data ke Eloquent ORM.
 
-## Contributing
+---
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## 🎨 Standar Penulisan Model (Laravel 13 Style)
+Seluruh model pada aplikasi ini ditulis menggunakan standar modern Laravel 13:
+1.  **PHP Attributes**: Menggunakan atribut bawaan PHP seperti `#[Fillable([...])]` dan `#[Hidden([...])]` untuk mendefinisikan kolom aman mass-assignment dan kolom tersembunyi.
+2.  **Casts Method**: Mendefinisikan tipe data kolom menggunakan metode `casts(): array` (bukan properti `$casts = [...]`).
+3.  **Strict Relations Return Types**: Setiap relasi memiliki penanda tipe return PHP yang eksplisit (misal: `BelongsTo`, `HasMany`, `BelongsToMany`, `HasOne`).
 
-## Code of Conduct
+*Contoh Model:*
+```php
+namespace App\Models;
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-## Security Vulnerabilities
+#[Fillable(['name', 'parent_id', 'passing_grade'])]
+class Category extends Model
+{
+    protected function casts(): array
+    {
+        return [
+            'passing_grade' => 'decimal:2',
+        ];
+    }
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(Category::class, 'parent_id');
+    }
+}
+```
 
-## License
+---
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## 🛠️ Stack Teknologi & Dependensi
+*   **Core**: Laravel 13, PHP 8.2+
+*   **Database**: MySQL / PostgreSQL / SQLite (Primary key menggunakan **ULID** untuk skalabilitas tinggi)
+*   **Autentikasi**: JWT (JSON Web Token) via `php-open-source-saver/jwt-auth`
+*   **Media**: Spatie Laravel Media Library (`spatie/laravel-medialibrary`)
+*   **Excel/CSV**: Maatwebsite Excel (`maatwebsite/excel`)
+*   **Roles & Permissions**: Spatie Permissions (`spatie/laravel-permission`)
+
+---
+
+## ⚙️ Panduan Instalasi
+
+### 1. Klon Repositori
+```bash
+git clone <url-repository>
+cd cbt-api-backend
+```
+
+### 2. Instal Dependensi Composer
+```bash
+composer install
+```
+
+### 3. Setup Lingkungan (.env)
+Salin berkas `.env.example` ke `.env` dan konfigurasikan koneksi database Anda:
+```bash
+cp .env.example .env
+php artisan key:generate
+php artisan jwt:secret
+```
+
+### 4. Migrasi & Seeder Database
+Untuk menyiapkan database bersih beserta data simulasi CPNS bawaan (50 soal TIU, 50 TWK, 50 TKP dengan KKM terpisah):
+```bash
+php artisan migrate:fresh --seed
+```
+
+### 5. Jalankan Server Lokal
+```bash
+php artisan serve
+```
+Secara default backend akan berjalan di `http://localhost:8000`.
+
+---
+
+## 🧪 Pengujian API (Postman / Insomnia)
+Semua rute API terdaftar di bawah prefiks `/api/v1/`. Untuk melihat daftar rute yang tersedia:
+```bash
+php artisan route:list
+```
