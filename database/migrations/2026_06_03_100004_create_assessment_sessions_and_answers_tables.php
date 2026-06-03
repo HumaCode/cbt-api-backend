@@ -15,9 +15,9 @@ return new class extends Migration
             $table->ulid('id')->primary();
             $table->foreignUlid('assessment_id')->constrained()->cascadeOnDelete();
             $table->foreignUlid('user_id')->constrained()->cascadeOnDelete();
-            $table->dateTime('start_time');
+            $table->dateTime('start_time')->index();
             $table->dateTime('end_time')->nullable();
-            $table->enum('status', ['in_progress', 'completed', 'force_submitted'])->default('in_progress');
+            $table->enum('status', ['in_progress', 'completed', 'force_submitted'])->default('in_progress')->index();
             $table->decimal('total_score', 8, 2)->default(0.00);
             $table->timestamps();
         });
@@ -28,7 +28,7 @@ return new class extends Migration
             $table->foreignUlid('question_id')->constrained()->cascadeOnDelete();
             $table->ulid('selected_option_id')->nullable()->index();
             $table->text('answer_text')->nullable();
-            $table->boolean('is_correct')->default(false);
+            $table->boolean('is_correct')->default(false)->index();
             $table->decimal('score_earned', 8, 2)->default(0.00);
             $table->timestamps();
 

@@ -23,8 +23,8 @@ return new class extends Migration
         Schema::create('questions', function (Blueprint $table) {
             $table->ulid('id')->primary();
             $table->foreignUlid('category_id')->constrained()->cascadeOnDelete();
-            $table->enum('type', ['pg', 'essay', 'likert']);
-            $table->enum('difficulty', ['easy', 'medium', 'hard']);
+            $table->enum('type', ['pg', 'essay', 'likert'])->index();
+            $table->enum('difficulty', ['easy', 'medium', 'hard'])->index();
             $table->longText('content_text');
             $table->foreignUlid('created_by')->constrained('users')->cascadeOnDelete();
             $table->timestamps();
@@ -34,7 +34,7 @@ return new class extends Migration
             $table->ulid('id')->primary();
             $table->foreignUlid('question_id')->constrained()->cascadeOnDelete();
             $table->text('option_text');
-            $table->boolean('is_correct')->default(false);
+            $table->boolean('is_correct')->default(false)->index();
             $table->decimal('weight', 8, 2)->default(0.00);
             $table->timestamps();
         });

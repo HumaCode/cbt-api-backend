@@ -33,7 +33,7 @@ return new class extends Migration
         Schema::create('assessment_question', function (Blueprint $table) {
             $table->foreignUlid('assessment_id')->constrained()->cascadeOnDelete();
             $table->foreignUlid('question_id')->constrained()->cascadeOnDelete();
-            $table->integer('order_no')->default(0);
+            $table->integer('order_no')->default(0)->index();
             $table->primary(['assessment_id', 'question_id']);
         });
     }

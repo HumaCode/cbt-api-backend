@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('assessment_proctoring_logs', function (Blueprint $table) {
             $table->ulid('id')->primary();
             $table->foreignUlid('session_id')->constrained('assessment_sessions')->cascadeOnDelete();
-            $table->string('event_type');
+            $table->string('event_type')->index();
             $table->text('event_details')->nullable();
             $table->timestamp('created_at')->useCurrent();
         });
