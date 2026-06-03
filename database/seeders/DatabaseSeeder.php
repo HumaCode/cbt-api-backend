@@ -15,11 +15,26 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        $this->call(RoleAndPermissionSeeder::class);
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        // Create Super Admin User
+        $admin = User::create([
+            'name' => 'Super Admin',
+            'username' => 'admin',
+            'email' => 'admin@cbt.com',
+            'password' => bcrypt('password123'),
+            'is_active' => '1',
         ]);
+        $admin->assignRole('Super Admin');
+
+        // Create a default Peserta User
+        $peserta = User::create([
+            'name' => 'Peserta Ujian',
+            'username' => 'peserta',
+            'email' => 'peserta@cbt.com',
+            'password' => bcrypt('password123'),
+            'is_active' => '1',
+        ]);
+        $peserta->assignRole('Peserta');
     }
 }
