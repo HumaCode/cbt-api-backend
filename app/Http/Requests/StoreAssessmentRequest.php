@@ -23,6 +23,8 @@ class StoreAssessmentRequest extends FormRequest
             'randomize_options' => ['sometimes', 'boolean'],
             'passing_grade' => ['sometimes', 'numeric', 'min:0', 'max:100'],
             'passing_grade_type' => ['sometimes', 'in:overall,per_category'],
+            'certificate_release_mode' => ['sometimes', 'in:auto,manual'],
+            'certificate_template' => ['sometimes', 'nullable', 'string'],
 
             // Pivot syncing validation
             'group_ids' => ['sometimes', 'array'],

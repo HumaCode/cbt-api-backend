@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
     'assessment_session_id',
@@ -32,7 +33,7 @@ class Certificate extends Model
     /**
      * Relationship with Assessment Session.
      */
-    public function assessmentSession()
+    public function assessmentSession(): BelongsTo
     {
         return $this->belongsTo(AssessmentSession::class, 'assessment_session_id');
     }
@@ -40,8 +41,9 @@ class Certificate extends Model
     /**
      * Relationship with User.
      */
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 }
+

@@ -56,7 +56,7 @@ class AssessmentController extends Controller
         $data = $request->only([
             'title', 'start_date', 'end_date', 'duration_minutes', 
             'max_attempts', 'randomize_questions', 'randomize_options',
-            'passing_grade', 'passing_grade_type'
+            'passing_grade', 'passing_grade_type', 'certificate_release_mode', 'certificate_template'
         ]);
         $groupIds = $request->input('group_ids');
         $questions = $request->input('questions');
@@ -112,7 +112,7 @@ class AssessmentController extends Controller
         $data = $request->only([
             'title', 'start_date', 'end_date', 'duration_minutes', 
             'max_attempts', 'randomize_questions', 'randomize_options',
-            'passing_grade', 'passing_grade_type'
+            'passing_grade', 'passing_grade_type', 'certificate_release_mode', 'certificate_template'
         ]);
         $groupIds = $request->input('group_ids');
         $questions = $request->input('questions');
@@ -157,10 +157,7 @@ class AssessmentController extends Controller
             return ResponseHelper::error('Ujian tidak ditemukan.', null, 404);
         }
 
-        $sessions = \App\Models\AssessmentSession::with(['user'])
-            ->withCount(['answers', 'proctoringLogs'])
-            ->where('assessment_id', $id)
-            ->get();
+        $sessions = $this->assessmentService->getAssessmentSessions($id);
 
         return ResponseHelper::success($sessions, 'Daftar sesi ujian peserta berhasil diambil.');
     }
@@ -173,34 +170,122 @@ class AssessmentController extends Controller
      */
     public function publicMonitor(string $id): JsonResponse
     {
-        $assessment = \App\Models\Assessment::with(['questions:id,category_id', 'questions.category:id,name'])->find($id);
+        $data = $this->assessmentService->getPublicMonitorData($id);
+        if (!$data) {
+            return ResponseHelper::error('Ujian tidak ditemukan.', null, 404);
+        }
+
+        return ResponseHelper::success($data, 'Data monitoring publik berhasil diambil.');
+    }
+
+    /**
+     * Export sessions to CSV.
+     *
+     * @param string $id
+     * @return \Symfony\Component\HttpFoundation\StreamedResponse|JsonResponse
+     */
+    public function exportSessions(string $id)
+    {
+        $user = auth('api')->user();
+        if (!$user || !$user->hasRole('Super Admin')) {
+            return ResponseHelper::error('Akses ditolak. Hanya Super Admin yang dapat mengekspor sesi.', null, 403);
+        }
+
+        $assessment = $this->assessmentService->getAssessmentById($id);
         if (!$assessment) {
             return ResponseHelper::error('Ujian tidak ditemukan.', null, 404);
         }
 
-        // Only return basic public details of the assessment
-        $publicAssessment = [
-            'id' => $assessment->id,
-            'title' => $assessment->title,
-            'passing_grade' => $assessment->passing_grade,
-            'duration' => $assessment->duration,
-            'start_date' => $assessment->start_date,
-            'end_date' => $assessment->end_date,
-            'questions_count' => $assessment->questions->count(),
-            'questions' => $assessment->questions,
+        $sessions = $this->assessmentService->getAssessmentSessions($id);
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="rekap_nilai_' . str_replace(' ', '_', strtolower($assessment->title)) . '.csv"',
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0'
         ];
 
-        $sessions = \App\Models\AssessmentSession::with([
-            'user:id,name,email',
-            'answers:id,session_id,question_id'
-        ])
-            ->withCount(['answers', 'proctoringLogs'])
-            ->where('assessment_id', $id)
-            ->get();
+        $callback = function () use ($sessions, $assessment) {
+            $file = fopen('php://output', 'w');
+            
+            // Add UTF-8 BOM for Excel Excel compatibility
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+            
+            // Header Row
+            fputcsv($file, [
+                'No',
+                'Nama Peserta',
+                'Email',
+                'Status Pengerjaan',
+                'Jawaban Tersimpan',
+                'Jumlah Pelanggaran',
+                'Nilai Akhir',
+                'Status KKM',
+                'Tanggal Mulai',
+                'Tanggal Selesai'
+            ], ';');
 
-        return ResponseHelper::success([
-            'assessment' => $publicAssessment,
-            'sessions' => $sessions
-        ], 'Data monitoring publik berhasil diambil.');
+            $no = 1;
+            foreach ($sessions as $session) {
+                $status = 'Belum Mulai';
+                if ($session->status === 'completed') {
+                    $status = 'Selesai';
+                } elseif ($session->status === 'force_submitted') {
+                    $status = 'Selesai (Otomatis)';
+                } elseif ($session->status === 'in_progress') {
+                    $status = 'Mengerjakan';
+                }
+
+                $kkmStatus = '-';
+                if ($session->status === 'completed' || $session->status === 'force_submitted') {
+                    $kkmStatus = $session->total_score >= $assessment->passing_grade ? 'Lulus KKM' : 'Tidak Lulus';
+                }
+
+                fputcsv($file, [
+                    $no++,
+                    $session->user?->name ?? 'Peserta',
+                    $session->user?->email ?? '-',
+                    $status,
+                    $session->answers_count ?? 0,
+                    $session->proctoring_logs_count ?? 0,
+                    $session->total_score ?? '0.00',
+                    $kkmStatus,
+                    $session->start_time ? $session->start_time->format('Y-m-d H:i:s') : '-',
+                    $session->end_time ? $session->end_time->format('Y-m-d H:i:s') : '-'
+                ], ';');
+            }
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Get item analysis (statistics of questions) for a specific assessment.
+     *
+     * @param string $id
+     * @return JsonResponse
+     */
+    public function itemAnalysis(string $id): JsonResponse
+    {
+        $analysis = $this->assessmentService->getItemAnalysisData($id);
+        if ($analysis === null) {
+            return ResponseHelper::error('Ujian tidak ditemukan.', null, 404);
+        }
+
+        return ResponseHelper::success($analysis, 'Analisis kualitas butir soal berhasil dihitung.');
+    }
+
+    /**
+     * Get global statistics for the admin dashboard.
+     *
+     * @return JsonResponse
+     */
+    public function dashboardStats(): JsonResponse
+    {
+        $stats = $this->assessmentService->getDashboardStats();
+        return ResponseHelper::success($stats, 'Statistik dashboard berhasil diambil.');
     }
 }
+

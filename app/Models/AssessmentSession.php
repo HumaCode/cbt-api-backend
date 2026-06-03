@@ -5,6 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
     'assessment_id',
@@ -14,6 +17,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
     'is_timer_started',
     'status',
     'total_score',
+    'is_certificate_released',
 ])]
 class AssessmentSession extends Model
 {
@@ -31,13 +35,14 @@ class AssessmentSession extends Model
             'end_time' => 'datetime',
             'is_timer_started' => 'boolean',
             'total_score' => 'decimal:2',
+            'is_certificate_released' => 'boolean',
         ];
     }
 
     /**
      * Relationship with Assessment.
      */
-    public function assessment()
+    public function assessment(): BelongsTo
     {
         return $this->belongsTo(Assessment::class);
     }
@@ -45,7 +50,7 @@ class AssessmentSession extends Model
     /**
      * Relationship with User.
      */
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
@@ -53,7 +58,7 @@ class AssessmentSession extends Model
     /**
      * Relationship with Answers.
      */
-    public function answers()
+    public function answers(): HasMany
     {
         return $this->hasMany(SessionAnswer::class, 'session_id');
     }
@@ -61,7 +66,7 @@ class AssessmentSession extends Model
     /**
      * Relationship with Proctoring Logs.
      */
-    public function proctoringLogs()
+    public function proctoringLogs(): HasMany
     {
         return $this->hasMany(AssessmentProctoringLog::class, 'session_id');
     }
@@ -69,8 +74,9 @@ class AssessmentSession extends Model
     /**
      * Relationship with Certificate.
      */
-    public function certificate()
+    public function certificate(): HasOne
     {
         return $this->hasOne(Certificate::class, 'assessment_session_id');
     }
 }
+

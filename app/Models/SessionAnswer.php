@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
     'session_id',
@@ -34,7 +35,7 @@ class SessionAnswer extends Model
     /**
      * Relationship with Session.
      */
-    public function session()
+    public function session(): BelongsTo
     {
         return $this->belongsTo(AssessmentSession::class, 'session_id');
     }
@@ -42,7 +43,7 @@ class SessionAnswer extends Model
     /**
      * Relationship with Question.
      */
-    public function question()
+    public function question(): BelongsTo
     {
         return $this->belongsTo(Question::class);
     }
@@ -50,8 +51,9 @@ class SessionAnswer extends Model
     /**
      * Relationship with Selected Option.
      */
-    public function selectedOption()
+    public function selectedOption(): BelongsTo
     {
         return $this->belongsTo(QuestionOption::class, 'selected_option_id');
     }
 }
+

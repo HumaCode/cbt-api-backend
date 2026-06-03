@@ -171,4 +171,108 @@ class AssessmentSessionService
             'total_score' => $totalScore,
         ]);
     }
+
+    public function forceSubmit(string $sessionId): void
+    {
+        \DB::transaction(function () use ($sessionId) {
+            $session = $this->sessionRepository->find($sessionId);
+            if ($session) {
+                $this->forceSubmitSession($session);
+            }
+        });
+    }
+
+    public function unlock(string $sessionId): void
+    {
+        \DB::transaction(function () use ($sessionId) {
+            $session = $this->sessionRepository->find($sessionId);
+            if ($session) {
+                $this->sessionRepository->update($sessionId, [
+                    'status' => 'in_progress',
+                    'is_timer_started' => false,
+                ]);
+            }
+        });
+    }
+
+    public function deleteSession(string $sessionId): bool
+    {
+        return DB::transaction(function () use ($sessionId) {
+            $session = AssessmentSession::find($sessionId);
+            if (!$session) {
+                return false;
+            }
+            $session->delete();
+            return true;
+        });
+    }
+
+    public function deleteSessionsBulk(array $sessionIds): void
+    {
+        DB::transaction(function () use ($sessionIds) {
+            AssessmentSession::whereIn('id', $sessionIds)->delete();
+        });
+    }
+
+    public function getSessionDetails(string $sessionId, string $userId, bool $isSuperAdmin): ?AssessmentSession
+    {
+        $session = AssessmentSession::with([
+            'user:id,name,email',
+            'assessment.questions.media',
+            'assessment.questions.category',
+            'assessment.questions.options.media',
+            'answers',
+        ])->find($sessionId);
+
+        if (!$session) {
+            return null;
+        }
+
+        if ($session->user_id !== $userId && !$isSuperAdmin) {
+            throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException('Akses ditolak.');
+        }
+
+        return $session;
+    }
+
+    public function toggleCertificateRelease(string $sessionId): ?AssessmentSession
+    {
+        return DB::transaction(function () use ($sessionId) {
+            $session = AssessmentSession::find($sessionId);
+            if (!$session) {
+                return null;
+            }
+            $session->is_certificate_released = !$session->is_certificate_released;
+            $session->save();
+            return $session;
+        });
+    }
+
+    public function gradeEssayAnswer(string $sessionId, string $questionId, float $score): ?SessionAnswer
+    {
+        return DB::transaction(function () use ($sessionId, $questionId, $score) {
+            $session = AssessmentSession::find($sessionId);
+            if (!$session) {
+                return null;
+            }
+
+            $answer = SessionAnswer::firstOrCreate([
+                'session_id' => $sessionId,
+                'question_id' => $questionId,
+            ]);
+
+            $answer->update([
+                'score_earned' => $score,
+                'is_correct' => $score > 0,
+            ]);
+
+            $totalScore = SessionAnswer::where('session_id', $sessionId)->sum('score_earned');
+            $session->update([
+                'total_score' => $totalScore,
+            ]);
+
+            return $answer;
+        });
+    }
 }
+

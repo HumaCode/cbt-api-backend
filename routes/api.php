@@ -29,11 +29,15 @@ Route::prefix('v1')->group(function () {
 
     // Protected Routes
     Route::group(['middleware' => 'auth:api'], function () {
+        Route::get('dashboard/stats', [AssessmentController::class, 'dashboardStats']);
         Route::apiResource('categories', CategoryController::class);
         Route::post('questions/import', [QuestionController::class, 'import']);
         Route::apiResource('questions', QuestionController::class);
         Route::apiResource('assessments', AssessmentController::class);
         Route::get('assessments/{assessment}/sessions', [AssessmentController::class, 'sessions']);
+        Route::get('assessments/{assessment}/export-sessions', [AssessmentController::class, 'exportSessions']);
+        Route::get('assessments/{assessment}/item-analysis', [AssessmentController::class, 'itemAnalysis']);
+        Route::post('users/import', [UserController::class, 'import']);
         Route::apiResource('users', UserController::class);
         Route::post('groups/{group}/members', [GroupController::class, 'syncMembers']);
         Route::apiResource('groups', GroupController::class);
@@ -43,7 +47,12 @@ Route::prefix('v1')->group(function () {
         Route::post('sessions/{session}/start-timer', [AssessmentSessionController::class, 'startTimer']);
         Route::post('sessions/{session}/answers', [AssessmentSessionController::class, 'submitAnswer']);
         Route::post('sessions/{session}/finish', [AssessmentSessionController::class, 'finish']);
+        Route::get('sessions/{session}', [AssessmentSessionController::class, 'show']);
         Route::delete('sessions/{session}', [AssessmentSessionController::class, 'destroy']);
+        Route::post('sessions/{session}/unlock', [AssessmentSessionController::class, 'unlock']);
+        Route::post('sessions/{session}/force-submit', [AssessmentSessionController::class, 'forceSubmit']);
+        Route::post('sessions/{session}/toggle-certificate', [AssessmentSessionController::class, 'toggleCertificate']);
+        Route::post('sessions/{session}/grade-essay', [AssessmentSessionController::class, 'gradeEssay']);
         Route::post('sessions/bulk-delete', [AssessmentSessionController::class, 'destroyBulk']);
 
         // Proctoring routes

@@ -100,12 +100,10 @@ class AssessmentSessionController extends Controller
             return ResponseHelper::error('Akses ditolak. Hanya Super Admin yang dapat menghapus sesi.', null, 403);
         }
 
-        $session = \App\Models\AssessmentSession::find($sessionId);
-        if (!$session) {
+        $deleted = $this->sessionService->deleteSession($sessionId);
+        if (!$deleted) {
             return ResponseHelper::error('Sesi tidak ditemukan.', null, 404);
         }
-
-        $session->delete();
 
         return ResponseHelper::success(null, 'Sesi ujian berhasil dihapus.');
     }
@@ -128,9 +126,124 @@ class AssessmentSessionController extends Controller
             'session_ids.*' => 'exists:assessment_sessions,id',
         ]);
 
-        $ids = $request->input('session_ids');
-        \App\Models\AssessmentSession::whereIn('id', $ids)->delete();
+        $this->sessionService->deleteSessionsBulk($request->input('session_ids'));
 
         return ResponseHelper::success(null, 'Sesi-sesi ujian yang dipilih berhasil dihapus.');
     }
+
+    /**
+     * Unlock an assessment session.
+     *
+     * @param string $sessionId
+     * @return JsonResponse
+     */
+    public function unlock(string $sessionId): JsonResponse
+    {
+        $user = auth('api')->user();
+        if (!$user || !$user->hasRole('Super Admin')) {
+            return ResponseHelper::error('Akses ditolak. Hanya Super Admin yang dapat membuka kunci sesi.', null, 403);
+        }
+
+        $this->sessionService->unlock($sessionId);
+
+        return ResponseHelper::success(null, 'Sesi ujian berhasil dibuka kunci.');
+    }
+
+    /**
+     * Force submit an assessment session.
+     *
+     * @param string $sessionId
+     * @return JsonResponse
+     */
+    public function forceSubmit(string $sessionId): JsonResponse
+    {
+        $user = auth('api')->user();
+        if (!$user || !$user->hasRole('Super Admin')) {
+            return ResponseHelper::error('Akses ditolak. Hanya Super Admin yang dapat memaksa pengumpulan.', null, 403);
+        }
+
+        $this->sessionService->forceSubmit($sessionId);
+
+        return ResponseHelper::success(null, 'Sesi ujian berhasil dikumpulkan secara paksa.');
+    }
+
+    /**
+     * Display the specified assessment session.
+     *
+     * @param string $sessionId
+     * @return JsonResponse
+     */
+    public function show(string $sessionId): JsonResponse
+    {
+        $user = auth('api')->user();
+        if (!$user) {
+            return ResponseHelper::error('Unauthenticated.', null, 401);
+        }
+
+        try {
+            $isSuperAdmin = $user->hasRole('Super Admin');
+            $session = $this->sessionService->getSessionDetails($sessionId, $user->id, $isSuperAdmin);
+            if (!$session) {
+                return ResponseHelper::error('Sesi tidak ditemukan.', null, 404);
+            }
+            return ResponseHelper::success($session, 'Data sesi berhasil diambil.');
+        } catch (\Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException $e) {
+            return ResponseHelper::error($e->getMessage(), null, 403);
+        }
+    }
+
+    /**
+     * Toggle certificate release for an assessment session.
+     *
+     * @param string $sessionId
+     * @return JsonResponse
+     */
+    public function toggleCertificate(string $sessionId): JsonResponse
+    {
+        $user = auth('api')->user();
+        if (!$user || !$user->hasRole('Super Admin')) {
+            return ResponseHelper::error('Akses ditolak. Hanya Super Admin yang dapat mengelola rilis sertifikat.', null, 403);
+        }
+
+        $session = $this->sessionService->toggleCertificateRelease($sessionId);
+        if (!$session) {
+            return ResponseHelper::error('Sesi tidak ditemukan.', null, 404);
+        }
+
+        $status = $session->is_certificate_released ? 'dirilis' : 'dibatalkan rilisnya';
+        return ResponseHelper::success($session, "Sertifikat berhasil {$status}.");
+    }
+
+    /**
+     * Grade an essay answer manually.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @param string $sessionId
+     * @return JsonResponse
+     */
+    public function gradeEssay(\Illuminate\Http\Request $request, string $sessionId): JsonResponse
+    {
+        $user = auth('api')->user();
+        if (!$user || !$user->hasRole('Super Admin')) {
+            return ResponseHelper::error('Akses ditolak. Hanya Super Admin yang dapat memberikan penilaian.', null, 403);
+        }
+
+        $request->validate([
+            'question_id' => 'required|exists:questions,id',
+            'score' => 'required|numeric|min:0',
+        ]);
+
+        $answer = $this->sessionService->gradeEssayAnswer(
+            $sessionId,
+            $request->input('question_id'),
+            (float) $request->input('score')
+        );
+
+        if (!$answer) {
+            return ResponseHelper::error('Sesi tidak ditemukan.', null, 404);
+        }
+
+        return ResponseHelper::success($answer, 'Penilaian soal esai berhasil disimpan.');
+    }
 }
+

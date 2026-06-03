@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'title',
@@ -16,6 +18,8 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
     'randomize_options',
     'passing_grade',
     'passing_grade_type',
+    'certificate_release_mode',
+    'certificate_template',
 ])]
 class Assessment extends Model
 {
@@ -35,13 +39,15 @@ class Assessment extends Model
             'randomize_options' => 'boolean',
             'passing_grade' => 'decimal:2',
             'passing_grade_type' => 'string',
+            'certificate_release_mode' => 'string',
+            'certificate_template' => 'string',
         ];
     }
 
     /**
      * Relationship with Groups.
      */
-    public function groups()
+    public function groups(): BelongsToMany
     {
         return $this->belongsToMany(Group::class, 'assessment_group', 'assessment_id', 'group_id');
     }
@@ -49,7 +55,7 @@ class Assessment extends Model
     /**
      * Relationship with Questions.
      */
-    public function questions()
+    public function questions(): BelongsToMany
     {
         return $this->belongsToMany(Question::class, 'assessment_question', 'assessment_id', 'question_id')
                     ->withPivot('order_no');
@@ -58,8 +64,9 @@ class Assessment extends Model
     /**
      * Relationship with Assessment Sessions.
      */
-    public function sessions()
+    public function sessions(): HasMany
     {
         return $this->hasMany(AssessmentSession::class);
     }
 }
+

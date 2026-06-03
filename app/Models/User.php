@@ -14,6 +14,8 @@ use Spatie\Permission\Traits\HasRoles;
 use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'name',
@@ -70,7 +72,7 @@ class User extends Authenticatable implements JWTSubject, HasMedia
     /**
      * Relationship with Groups.
      */
-    public function groups()
+    public function groups(): BelongsToMany
     {
         return $this->belongsToMany(Group::class, 'group_user', 'user_id', 'group_id');
     }
@@ -78,7 +80,7 @@ class User extends Authenticatable implements JWTSubject, HasMedia
     /**
      * Relationship with Assessment Sessions.
      */
-    public function assessmentSessions()
+    public function assessmentSessions(): HasMany
     {
         return $this->hasMany(AssessmentSession::class);
     }
@@ -93,3 +95,4 @@ class User extends Authenticatable implements JWTSubject, HasMedia
         return $this->getFirstMediaUrl('avatar') ?: null;
     }
 }
+

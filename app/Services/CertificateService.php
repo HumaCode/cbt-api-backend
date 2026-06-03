@@ -35,6 +35,13 @@ class CertificateService
                 throw ValidationException::withMessages(['session' => 'Anda tidak memiliki hak akses ke sesi ini.']);
             }
 
+            // Check manual release setting if the participant is retrieving it
+            $isStaff = $user->hasAnyRole(['Super Admin', 'Assessor']);
+            $releaseMode = $session->assessment->certificate_release_mode ?? 'auto';
+            if ($releaseMode === 'manual' && !$isStaff && !$session->is_certificate_released) {
+                throw ValidationException::withMessages(['session' => 'Sertifikat kelulusan belum dirilis oleh administrator.']);
+            }
+
             // Check if status is completed
             if (!in_array($session->status, ['completed', 'force_submitted'])) {
                 throw ValidationException::withMessages(['session' => 'Sesi ujian belum diselesaikan.']);
