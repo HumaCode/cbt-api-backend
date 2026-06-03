@@ -54,6 +54,23 @@ class AssessmentSessionController extends Controller
     }
 
     /**
+     * Start the timer for the session.
+     *
+     * @param string $sessionId
+     * @return JsonResponse
+     */
+    public function startTimer(string $sessionId): JsonResponse
+    {
+        try {
+            $userId = auth('api')->id();
+            $session = $this->sessionService->startTimer($sessionId, $userId);
+            return ResponseHelper::success($session, 'Waktu ujian mulai berjalan.');
+        } catch (ValidationException $e) {
+            return ResponseHelper::error($e->getMessage(), $e->errors(), 422);
+        }
+    }
+
+    /**
      * Finish the assessment session.
      *
      * @param string $sessionId

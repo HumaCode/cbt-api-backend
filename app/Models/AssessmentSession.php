@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
     'user_id',
     'start_time',
     'end_time',
+    'is_timer_started',
     'status',
     'total_score',
 ])]
@@ -28,6 +29,7 @@ class AssessmentSession extends Model
         return [
             'start_time' => 'datetime',
             'end_time' => 'datetime',
+            'is_timer_started' => 'boolean',
             'total_score' => 'decimal:2',
         ];
     }

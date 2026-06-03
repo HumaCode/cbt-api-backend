@@ -132,6 +132,37 @@ class AssessmentSessionService
         });
     }
 
+    public function startTimer(string $sessionId, string $userId): AssessmentSession
+    {
+        return DB::transaction(function () use ($sessionId, $userId) {
+            $session = $this->sessionRepository->find($sessionId);
+            if (!$session || $session->user_id !== $userId) {
+                throw ValidationException::withMessages(['session' => 'Sesi ujian tidak valid.']);
+            }
+
+            if ($session->status !== 'in_progress') {
+                throw ValidationException::withMessages(['session' => 'Sesi ujian sudah selesai atau tidak aktif.']);
+            }
+
+            // Only start the timer if it hasn't been started yet
+            if (!$session->is_timer_started) {
+                $assessment = $session->assessment;
+                $duration = $assessment->duration_minutes;
+
+                $this->sessionRepository->update($sessionId, [
+                    'start_time' => now(),
+                    'end_time' => now()->addMinutes($duration),
+                    'is_timer_started' => true,
+                ]);
+
+                // Fetch the updated session
+                $session = $this->sessionRepository->find($sessionId);
+            }
+
+            return $session;
+        });
+    }
+
     protected function forceSubmitSession(AssessmentSession $session): void
     {
         $totalScore = $this->sessionRepository->calculateTotalScore($session->id);

@@ -29,6 +29,7 @@ Route::prefix('v1')->group(function () {
 
         // Assessment Session execution routes
         Route::post('assessments/{assessment}/start', [AssessmentSessionController::class, 'start']);
+        Route::post('sessions/{session}/start-timer', [AssessmentSessionController::class, 'startTimer']);
         Route::post('sessions/{session}/answers', [AssessmentSessionController::class, 'submitAnswer']);
         Route::post('sessions/{session}/finish', [AssessmentSessionController::class, 'finish']);
 
