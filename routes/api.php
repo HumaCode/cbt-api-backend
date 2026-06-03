@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CategoryController;
 
 Route::prefix('v1')->group(function () {
     Route::group(['prefix' => 'auth'], function () {
@@ -13,5 +14,10 @@ Route::prefix('v1')->group(function () {
             Route::post('/refresh', [AuthController::class, 'refresh']);
             Route::get('/me', [AuthController::class, 'me']);
         });
+    });
+
+    // Protected Routes
+    Route::group(['middleware' => 'auth:api'], function () {
+        Route::apiResource('categories', CategoryController::class);
     });
 });
