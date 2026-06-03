@@ -10,7 +10,7 @@ beforeEach(function () {
 });
 
 test('user can login with username', function () {
-    $response = $this->postJson('/api/auth/login', [
+    $response = $this->postJson('/api/v1/auth/login', [
         'login' => 'admin',
         'password' => 'password123',
     ]);
@@ -35,7 +35,7 @@ test('user can login with username', function () {
 });
 
 test('user can login with email', function () {
-    $response = $this->postJson('/api/auth/login', [
+    $response = $this->postJson('/api/v1/auth/login', [
         'login' => 'admin@cbt.com',
         'password' => 'password123',
     ]);
@@ -50,7 +50,7 @@ test('inactive user cannot login', function () {
     $user = User::where('username', 'peserta')->first();
     $user->update(['is_active' => '0']);
 
-    $response = $this->postJson('/api/auth/login', [
+    $response = $this->postJson('/api/v1/auth/login', [
         'login' => 'peserta',
         'password' => 'password123',
     ]);
@@ -62,7 +62,7 @@ test('inactive user cannot login', function () {
 });
 
 test('user can get their profile (me) using token', function () {
-    $loginResponse = $this->postJson('/api/auth/login', [
+    $loginResponse = $this->postJson('/api/v1/auth/login', [
         'login' => 'peserta',
         'password' => 'password123',
     ]);
@@ -71,7 +71,7 @@ test('user can get their profile (me) using token', function () {
 
     $response = $this->withHeaders([
         'Authorization' => 'Bearer ' . $token,
-    ])->getJson('/api/auth/me');
+    ])->getJson('/api/v1/auth/me');
 
     $response->assertStatus(200)
         ->assertJsonPath('data.username', 'peserta');
