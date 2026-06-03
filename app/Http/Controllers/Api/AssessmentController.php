@@ -29,6 +29,11 @@ class AssessmentController extends Controller
     {
         $filters = $request->only(['search', 'active']);
         
+        $user = auth('api')->user();
+        if ($user && !$user->hasRole('Super Admin')) {
+            $filters['user_id'] = $user->id;
+        }
+        
         if ($request->input('per_page') === 'all' || !$request->has('per_page')) {
             $assessments = $this->assessmentService->getAllAssessments($filters);
             return ResponseHelper::success($assessments, 'Daftar ujian berhasil diambil.');
@@ -72,6 +77,24 @@ class AssessmentController extends Controller
 
         if (!$assessment) {
             return ResponseHelper::error('Ujian tidak ditemukan.', null, 404);
+        }
+
+        $user = auth('api')->user();
+        if ($user && !$user->hasRole('Super Admin')) {
+            $userGroupIds = $user->groups()->pluck('groups.id')->toArray();
+            $targetGroupIds = $assessment->groups()->pluck('groups.id')->toArray();
+
+            $isTarget = false;
+            foreach ($userGroupIds as $ugId) {
+                if (in_array($ugId, $targetGroupIds)) {
+                    $isTarget = true;
+                    break;
+                }
+            }
+
+            if (!$isTarget) {
+                return ResponseHelper::error('Anda tidak terdaftar sebagai peserta ujian ini.', null, 403);
+            }
         }
 
         return ResponseHelper::success($assessment, 'Detail ujian berhasil diambil.');

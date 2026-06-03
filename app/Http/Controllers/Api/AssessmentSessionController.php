@@ -86,4 +86,51 @@ class AssessmentSessionController extends Controller
             return ResponseHelper::error($e->getMessage(), $e->errors(), 422);
         }
     }
+
+    /**
+     * Delete an assessment session.
+     *
+     * @param string $sessionId
+     * @return JsonResponse
+     */
+    public function destroy(string $sessionId): JsonResponse
+    {
+        $user = auth('api')->user();
+        if (!$user || !$user->hasRole('Super Admin')) {
+            return ResponseHelper::error('Akses ditolak. Hanya Super Admin yang dapat menghapus sesi.', null, 403);
+        }
+
+        $session = \App\Models\AssessmentSession::find($sessionId);
+        if (!$session) {
+            return ResponseHelper::error('Sesi tidak ditemukan.', null, 404);
+        }
+
+        $session->delete();
+
+        return ResponseHelper::success(null, 'Sesi ujian berhasil dihapus.');
+    }
+
+    /**
+     * Delete multiple assessment sessions in bulk.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return JsonResponse
+     */
+    public function destroyBulk(\Illuminate\Http\Request $request): JsonResponse
+    {
+        $user = auth('api')->user();
+        if (!$user || !$user->hasRole('Super Admin')) {
+            return ResponseHelper::error('Akses ditolak. Hanya Super Admin yang dapat menghapus sesi.', null, 403);
+        }
+
+        $request->validate([
+            'session_ids' => 'required|array',
+            'session_ids.*' => 'exists:assessment_sessions,id',
+        ]);
+
+        $ids = $request->input('session_ids');
+        \App\Models\AssessmentSession::whereIn('id', $ids)->delete();
+
+        return ResponseHelper::success(null, 'Sesi-sesi ujian yang dipilih berhasil dihapus.');
+    }
 }

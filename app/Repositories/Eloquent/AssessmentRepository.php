@@ -12,6 +12,13 @@ class AssessmentRepository implements AssessmentRepositoryInterface
     {
         $query = Assessment::with(['groups', 'questions']);
 
+        $userId = $filters['user_id'] ?? auth('api')->id();
+        if ($userId) {
+            $query->with(['sessions' => function ($q) use ($userId) {
+                $q->where('user_id', $userId);
+            }]);
+        }
+
         if (!empty($filters['search'])) {
             $query->where('title', 'like', '%' . $filters['search'] . '%');
         }
@@ -22,6 +29,14 @@ class AssessmentRepository implements AssessmentRepositoryInterface
                 $query->where('start_date', '<=', $now)
                       ->where('end_date', '>=', $now);
             }
+        }
+
+        if (!empty($filters['user_id'])) {
+            $query->whereHas('groups', function ($q) use ($filters) {
+                $q->whereHas('users', function ($uq) use ($filters) {
+                    $uq->where('users.id', $filters['user_id']);
+                });
+            });
         }
 
         return $query->latest()->paginate($perPage);
@@ -31,6 +46,13 @@ class AssessmentRepository implements AssessmentRepositoryInterface
     {
         $query = Assessment::with(['groups', 'questions']);
 
+        $userId = $filters['user_id'] ?? auth('api')->id();
+        if ($userId) {
+            $query->with(['sessions' => function ($q) use ($userId) {
+                $q->where('user_id', $userId);
+            }]);
+        }
+
         if (!empty($filters['search'])) {
             $query->where('title', 'like', '%' . $filters['search'] . '%');
         }
@@ -41,6 +63,14 @@ class AssessmentRepository implements AssessmentRepositoryInterface
                 $query->where('start_date', '<=', $now)
                       ->where('end_date', '>=', $now);
             }
+        }
+
+        if (!empty($filters['user_id'])) {
+            $query->whereHas('groups', function ($q) use ($filters) {
+                $q->whereHas('users', function ($uq) use ($filters) {
+                    $uq->where('users.id', $filters['user_id']);
+                });
+            });
         }
 
         return $query->latest()->get();

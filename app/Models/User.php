@@ -12,23 +12,24 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Spatie\Permission\Traits\HasRoles;
 use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
 
 #[Fillable([
     'name',
     'username',
     'email',
     'password',
-    'avatar',
     'telp',
     'gender',
     'is_active',
     'last_activity',
 ])]
 #[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable implements JWTSubject
+class User extends Authenticatable implements JWTSubject, HasMedia
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, HasUlids, HasRoles;
+    use HasFactory, Notifiable, HasUlids, HasRoles, InteractsWithMedia;
 
     protected $guard_name = 'api';
 
@@ -80,5 +81,15 @@ class User extends Authenticatable implements JWTSubject
     public function assessmentSessions()
     {
         return $this->hasMany(AssessmentSession::class);
+    }
+
+    /**
+     * Get the user's avatar URL from Spatie Media Library.
+     *
+     * @return string|null
+     */
+    public function getAvatarAttribute(): ?string
+    {
+        return $this->getFirstMediaUrl('avatar') ?: null;
     }
 }

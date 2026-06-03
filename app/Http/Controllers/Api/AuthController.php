@@ -105,8 +105,50 @@ class AuthController extends Controller
             'telp' => $user->telp,
             'gender' => $user->gender,
             'roles' => $user->getRoleNames(),
+            'groups' => $user->groups()->select('groups.id', 'groups.name')->get(),
         ];
 
         return ResponseHelper::success($data);
+    }
+
+    /**
+     * Update the authenticated user's profile.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return JsonResponse
+     */
+    public function updateProfile(\Illuminate\Http\Request $request): JsonResponse
+    {
+        $user = auth('api')->user();
+
+        if (!$user) {
+            return ResponseHelper::error('Unauthorized', null, 401);
+        }
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'telp' => 'required|string|max:20',
+            'gender' => 'required|in:male,female',
+        ]);
+
+        $user->update([
+            'name' => $request->name,
+            'telp' => $request->telp,
+            'gender' => $request->gender,
+        ]);
+
+        $data = [
+            'id' => $user->id,
+            'name' => $user->name,
+            'username' => $user->username,
+            'email' => $user->email,
+            'avatar' => $user->avatar,
+            'telp' => $user->telp,
+            'gender' => $user->gender,
+            'roles' => $user->getRoleNames(),
+            'groups' => $user->groups()->select('groups.id', 'groups.name')->get(),
+        ];
+
+        return ResponseHelper::success($data, 'Profil berhasil diperbarui.');
     }
 }

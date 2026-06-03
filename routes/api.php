@@ -8,6 +8,8 @@ use App\Http\Controllers\Api\AssessmentController;
 use App\Http\Controllers\Api\AssessmentSessionController;
 use App\Http\Controllers\Api\ProctoringController;
 use App\Http\Controllers\Api\CertificateController;
+use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\GroupController;
 
 Route::prefix('v1')->group(function () {
     Route::group(['prefix' => 'auth'], function () {
@@ -18,6 +20,7 @@ Route::prefix('v1')->group(function () {
             Route::post('/logout', [AuthController::class, 'logout']);
             Route::post('/refresh', [AuthController::class, 'refresh']);
             Route::get('/me', [AuthController::class, 'me']);
+            Route::put('/profile', [AuthController::class, 'updateProfile']);
         });
     });
 
@@ -31,12 +34,17 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('questions', QuestionController::class);
         Route::apiResource('assessments', AssessmentController::class);
         Route::get('assessments/{assessment}/sessions', [AssessmentController::class, 'sessions']);
+        Route::apiResource('users', UserController::class);
+        Route::post('groups/{group}/members', [GroupController::class, 'syncMembers']);
+        Route::apiResource('groups', GroupController::class);
 
         // Assessment Session execution routes
         Route::post('assessments/{assessment}/start', [AssessmentSessionController::class, 'start']);
         Route::post('sessions/{session}/start-timer', [AssessmentSessionController::class, 'startTimer']);
         Route::post('sessions/{session}/answers', [AssessmentSessionController::class, 'submitAnswer']);
         Route::post('sessions/{session}/finish', [AssessmentSessionController::class, 'finish']);
+        Route::delete('sessions/{session}', [AssessmentSessionController::class, 'destroy']);
+        Route::post('sessions/bulk-delete', [AssessmentSessionController::class, 'destroyBulk']);
 
         // Proctoring routes
         Route::post('sessions/{session}/proctor-logs', [ProctoringController::class, 'store']);
