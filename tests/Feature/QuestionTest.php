@@ -78,7 +78,8 @@ test('user can create a question with file attachments', function () {
 
     $response->assertStatus(201);
     
-    $question = Question::latest()->first();
+    $createdId = $response->json('data.id');
+    $question = Question::find($createdId);
     expect($question->getMedia('attachments'))->toHaveCount(1);
 });
 

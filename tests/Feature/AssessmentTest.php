@@ -62,15 +62,15 @@ test('user can create an assessment with groups and questions', function () {
         'duration_minutes' => 90,
     ]);
 
-    $assessment = Assessment::latest()->first();
+    $assessmentId = $response->json('data.id');
 
     $this->assertDatabaseHas('assessment_group', [
-        'assessment_id' => $assessment->id,
+        'assessment_id' => $assessmentId,
         'group_id' => $this->group->id,
     ]);
 
     $this->assertDatabaseHas('assessment_question', [
-        'assessment_id' => $assessment->id,
+        'assessment_id' => $assessmentId,
         'question_id' => $this->question->id,
         'order_no' => 1,
     ]);
