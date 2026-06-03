@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
 use App\Services\AuthService;
+use App\Helpers\ResponseHelper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
 
@@ -32,17 +33,9 @@ class AuthController extends Controller
                 $request->input('password')
             );
 
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Login berhasil.',
-                'data' => $response,
-            ]);
+            return ResponseHelper::success($response, 'Login berhasil.');
         } catch (ValidationException $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => $e->getMessage(),
-                'errors' => $e->errors(),
-            ], 422);
+            return ResponseHelper::error($e->getMessage(), $e->errors(), 422);
         }
     }
 
@@ -56,16 +49,14 @@ class AuthController extends Controller
     {
         $user = $this->authService->register($request->validated());
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Registrasi berhasil. Silakan login.',
-            'data' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'username' => $user->username,
-                'email' => $user->email,
-            ],
-        ], 201);
+        $data = [
+            'id' => $user->id,
+            'name' => $user->name,
+            'username' => $user->username,
+            'email' => $user->email,
+        ];
+
+        return ResponseHelper::success($data, 'Registrasi berhasil. Silakan login.', 201);
     }
 
     /**
@@ -77,10 +68,7 @@ class AuthController extends Controller
     {
         $this->authService->logout();
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Logout berhasil.',
-        ]);
+        return ResponseHelper::success(null, 'Logout berhasil.');
     }
 
     /**
@@ -92,11 +80,7 @@ class AuthController extends Controller
     {
         $response = $this->authService->refresh();
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Token berhasil diperbarui.',
-            'data' => $response,
-        ]);
+        return ResponseHelper::success($response, 'Token berhasil diperbarui.');
     }
 
     /**
@@ -109,24 +93,20 @@ class AuthController extends Controller
         $user = auth('api')->user();
 
         if (!$user) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Unauthorized',
-            ], 401);
+            return ResponseHelper::error('Unauthorized', null, 401);
         }
 
-        return response()->json([
-            'status' => 'success',
-            'data' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'username' => $user->username,
-                'email' => $user->email,
-                'avatar' => $user->avatar,
-                'telp' => $user->telp,
-                'gender' => $user->gender,
-                'roles' => $user->getRoleNames(),
-            ],
-        ]);
+        $data = [
+            'id' => $user->id,
+            'name' => $user->name,
+            'username' => $user->username,
+            'email' => $user->email,
+            'avatar' => $user->avatar,
+            'telp' => $user->telp,
+            'gender' => $user->gender,
+            'roles' => $user->getRoleNames(),
+        ];
+
+        return ResponseHelper::success($data);
     }
 }
