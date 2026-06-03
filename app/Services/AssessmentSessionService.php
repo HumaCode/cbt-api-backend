@@ -1,0 +1,143 @@
+<?php
+
+namespace App\Services;
+
+use App\Repositories\Contracts\AssessmentSessionRepositoryInterface;
+use App\Repositories\Contracts\AssessmentRepositoryInterface;
+use App\Models\AssessmentSession;
+use App\Models\SessionAnswer;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\DB;
+
+class AssessmentSessionService
+{
+    protected AssessmentSessionRepositoryInterface $sessionRepository;
+    protected AssessmentRepositoryInterface $assessmentRepository;
+
+    public function __construct(
+        AssessmentSessionRepositoryInterface $sessionRepository,
+        AssessmentRepositoryInterface $assessmentRepository
+    ) {
+        $this->sessionRepository = $sessionRepository;
+        $this->assessmentRepository = $assessmentRepository;
+    }
+
+    public function startSession(string $userId, string $assessmentId): AssessmentSession
+    {
+        return DB::transaction(function () use ($userId, $assessmentId) {
+            $assessment = $this->assessmentRepository->find($assessmentId);
+            if (!$assessment) {
+                throw ValidationException::withMessages(['assessment' => 'Ujian tidak ditemukan.']);
+            }
+
+            // Check if active date range
+            $now = now();
+            if ($now->lt($assessment->start_date) || $now->gt($assessment->end_date)) {
+                throw ValidationException::withMessages(['assessment' => 'Ujian tidak sedang berlangsung atau sudah ditutup.']);
+            }
+
+            // Check if user is in target groups
+            $user = auth('api')->user();
+            $userGroupIds = $user->groups()->pluck('groups.id')->toArray();
+            $targetGroupIds = $assessment->groups()->pluck('groups.id')->toArray();
+
+            $isTarget = false;
+            foreach ($userGroupIds as $ugId) {
+                if (in_array($ugId, $targetGroupIds)) {
+                    $isTarget = true;
+                    break;
+                }
+            }
+
+            // Also check if Super Admin
+            if (!$isTarget && !$user->hasRole('Super Admin')) {
+                throw ValidationException::withMessages(['assessment' => 'Anda tidak terdaftar sebagai peserta ujian ini.']);
+            }
+
+            // Check for active session (resume)
+            $activeSession = $this->sessionRepository->getUserActiveSession($userId, $assessmentId);
+            if ($activeSession) {
+                // Check if time expired
+                if (now()->gt($activeSession->end_time)) {
+                    $this->forceSubmitSession($activeSession);
+                } else {
+                    return $activeSession;
+                }
+            }
+
+            // Check max attempts
+            $attempts = $this->sessionRepository->getAttemptsCount($userId, $assessmentId);
+            if ($attempts >= $assessment->max_attempts) {
+                throw ValidationException::withMessages(['assessment' => 'Anda telah melebihi batas percobaan pengerjaan ujian ini.']);
+            }
+
+            // Create new session
+            $duration = $assessment->duration_minutes;
+            return $this->sessionRepository->create([
+                'assessment_id' => $assessmentId,
+                'user_id' => $userId,
+                'start_time' => now(),
+                'end_time' => now()->addMinutes($duration),
+                'status' => 'in_progress',
+                'total_score' => 0.00,
+            ]);
+        });
+    }
+
+    public function submitAnswer(string $sessionId, string $userId, array $answerData): SessionAnswer
+    {
+        return DB::transaction(function () use ($sessionId, $userId, $answerData) {
+            $session = $this->sessionRepository->find($sessionId);
+            if (!$session || $session->user_id !== $userId) {
+                throw ValidationException::withMessages(['session' => 'Sesi ujian tidak valid.']);
+            }
+
+            if ($session->status !== 'in_progress') {
+                throw ValidationException::withMessages(['session' => 'Sesi ujian sudah selesai atau tidak aktif.']);
+            }
+
+            // Check if time expired
+            if (now()->gt($session->end_time)) {
+                $this->forceSubmitSession($session);
+                throw ValidationException::withMessages(['session' => 'Waktu ujian telah habis. Jawaban Anda disimpan otomatis.']);
+            }
+
+            // Save answer
+            return $this->sessionRepository->saveAnswer($sessionId, $answerData);
+        });
+    }
+
+    public function finishSession(string $sessionId, string $userId): AssessmentSession
+    {
+        return DB::transaction(function () use ($sessionId, $userId) {
+            $session = $this->sessionRepository->find($sessionId);
+            if (!$session || $session->user_id !== $userId) {
+                throw ValidationException::withMessages(['session' => 'Sesi ujian tidak valid.']);
+            }
+
+            if ($session->status !== 'in_progress') {
+                return $session;
+            }
+
+            // Calculate score
+            $totalScore = $this->sessionRepository->calculateTotalScore($sessionId);
+
+            $this->sessionRepository->update($sessionId, [
+                'status' => 'completed',
+                'end_time' => now(),
+                'total_score' => $totalScore,
+            ]);
+
+            return $this->sessionRepository->find($sessionId);
+        });
+    }
+
+    protected function forceSubmitSession(AssessmentSession $session): void
+    {
+        $totalScore = $this->sessionRepository->calculateTotalScore($session->id);
+        $this->sessionRepository->update($session->id, [
+            'status' => 'force_submitted',
+            'total_score' => $totalScore,
+        ]);
+    }
+}

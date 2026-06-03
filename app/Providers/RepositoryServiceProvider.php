@@ -11,6 +11,8 @@ use App\Repositories\Contracts\QuestionRepositoryInterface;
 use App\Repositories\Eloquent\QuestionRepository;
 use App\Repositories\Contracts\AssessmentRepositoryInterface;
 use App\Repositories\Eloquent\AssessmentRepository;
+use App\Repositories\Contracts\AssessmentSessionRepositoryInterface;
+use App\Repositories\Eloquent\AssessmentSessionRepository;
 
 class RepositoryServiceProvider extends ServiceProvider
 {
@@ -23,6 +25,7 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(CategoryRepositoryInterface::class, CategoryRepository::class);
         $this->app->bind(QuestionRepositoryInterface::class, QuestionRepository::class);
         $this->app->bind(AssessmentRepositoryInterface::class, AssessmentRepository::class);
+        $this->app->bind(AssessmentSessionRepositoryInterface::class, AssessmentSessionRepository::class);
     }
 
     /**

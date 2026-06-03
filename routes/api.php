@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\QuestionController;
 use App\Http\Controllers\Api\AssessmentController;
+use App\Http\Controllers\Api\AssessmentSessionController;
 
 Route::prefix('v1')->group(function () {
     Route::group(['prefix' => 'auth'], function () {
@@ -23,5 +24,10 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('categories', CategoryController::class);
         Route::apiResource('questions', QuestionController::class);
         Route::apiResource('assessments', AssessmentController::class);
+
+        // Assessment Session execution routes
+        Route::post('assessments/{assessment}/start', [AssessmentSessionController::class, 'start']);
+        Route::post('sessions/{session}/answers', [AssessmentSessionController::class, 'submitAnswer']);
+        Route::post('sessions/{session}/finish', [AssessmentSessionController::class, 'finish']);
     });
 });
