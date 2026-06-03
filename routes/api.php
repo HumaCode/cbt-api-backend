@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\QuestionController;
 use App\Http\Controllers\Api\AssessmentController;
 use App\Http\Controllers\Api\AssessmentSessionController;
+use App\Http\Controllers\Api\ProctoringController;
 
 Route::prefix('v1')->group(function () {
     Route::group(['prefix' => 'auth'], function () {
@@ -29,5 +30,9 @@ Route::prefix('v1')->group(function () {
         Route::post('assessments/{assessment}/start', [AssessmentSessionController::class, 'start']);
         Route::post('sessions/{session}/answers', [AssessmentSessionController::class, 'submitAnswer']);
         Route::post('sessions/{session}/finish', [AssessmentSessionController::class, 'finish']);
+
+        // Proctoring routes
+        Route::post('sessions/{session}/proctor-logs', [ProctoringController::class, 'store']);
+        Route::get('sessions/{session}/proctor-logs', [ProctoringController::class, 'index']);
     });
 });
