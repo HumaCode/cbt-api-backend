@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('assessments', function (Blueprint $table) {
-            $table->enum('certificate_release_mode', ['auto', 'manual'])->default('auto')->after('passing_grade_type');
+            $table->enum('certificate_release_mode', ['auto', 'manual'])->default('auto')->after('passing_grade');
         });
 
         Schema::table('assessment_sessions', function (Blueprint $table) {
